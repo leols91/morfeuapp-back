@@ -1,0 +1,39 @@
+// .eslintrc.json
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "project": "./tsconfig.json"
+  },
+  "env": {
+    "node": true,
+    "es2022": true
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "prettier",
+    "import"
+  ],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "root": true,
+  "rules": {
+    // Regras opcionais para melhorar a organização
+    "import/order": [
+      "error",
+      {
+        "groups": ["builtin", "external", "internal", "parent", "sibling", "index", "object", "type"],
+        "newlines-between": "always",
+        "alphabetize": { "order": "asc", "caseInsensitive": true }
+      }
+    ],
+    // Desativa uma regra antiga do TypeScript que exigia "I" na frente de interfaces
+    "@typescript-eslint/interface-name-prefix": "off",
+    // Permite o uso de "any" mas sugere usar um tipo melhor
+    "@typescript-eslint/no-explicit-any": "warn"
+  }
+}
