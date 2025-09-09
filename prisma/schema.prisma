@@ -1,15 +1,58 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// =========================
+// Modelos de Negócio
+// =========================
+
+model Pousada {
+  id                      String   @id @default(uuid())
+  legalName               String
+  tradeName               String
+  monthlyProrationMode    String   @default("actual_days") // 'none','actual_days','30_days'
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relacionamentos
+  usuariosPousada         UsuarioPousada[]
+
+  @@map("pousada")
+}
+
+model Usuario {
+  id            String    @id @default(uuid())
+  name          String
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String    
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relacionamentos
+  pousadasUsuario         UsuarioPousada[]
+
+  @@map("usuario")
+}
+
+// Tabela de ligação para o relacionamento N:N entre Usuario e Pousada
+model UsuarioPousada {
+  usuarioId String
+  pousadaId String
+  isDefault Boolean @default(false)
+
+  // Definição das relações
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, pousadaId])
+  @@map("usuario_pousada")
 }

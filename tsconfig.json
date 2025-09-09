@@ -1,49 +1,36 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
+    // --- Estrutura de Arquivos e Saída ---
     "rootDir": "src",
     "outDir": "dist",
 
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
-    "types": [],
+    // --- Ambiente e Sistema de Módulos (Node.js moderno) ---
+    "target": "es2021",
     "lib": ["es2021"],
-    // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
 
-    // Other Outputs
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
+    // --- Rigor e Boas Práticas ---
     "strict": true,
-    "jsx": "react-jsx",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "noUncheckedSideEffectImports": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
 
+    // --- Interoperabilidade com Módulos JavaScript ---
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-  }
+    "skipLibCheck": true
+  },
+
+  // --- Arquivos a Serem Incluídos na Compilação ---
+  // Apenas o que está dentro da pasta 'src' será parte do nosso build final.
+  // Esta seção fica FORA de "compilerOptions".
+  "include": [
+    "src/**/*"
+  ],
+
+  // --- Arquivos a Serem Excluídos (boa prática) ---
+  "exclude": [
+    "node_modules"
+  ]
 }

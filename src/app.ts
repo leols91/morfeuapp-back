@@ -1,19 +1,41 @@
-// src/app.ts
 import express from 'express';
+import type { Express } from 'express';
 import cors from 'cors';
 
-const app = express();
+// Middlewares
+import { authMiddleware } from './core/middlewares/auth.middleware.js';
 
-app.use(cors()); // Permite requisições de outros domínios
-app.use(express.json()); // Habilita o parsing de JSON no corpo das requisições
+// Importadores de Rota
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { userRoutes } from './modules/users/user.routes.js';
 
-// Rota de teste para verificar se o servidor está no ar
+const app: Express = express();
+
+// Middlewares Globais Iniciais
+app.use(cors());
+app.use(express.json());
+
+// Rota de Status (pública, opcional)
 app.get('/', (req, res) => {
   res.json({
     message: '🚀 Bem-vindo à API do MorfeuApp!',
     version: '1.0.0',
-    docs: '/api-docs' // Futuramente, o link para a documentação
   });
 });
+
+// --- ROTAS PÚBLICAS ---
+// Todas as rotas de autenticação são registradas ANTES do middleware de proteção.
+app.use('/api', authRoutes);
+
+
+// --- MIDDLEWARE DE AUTENTICAÇÃO GLOBAL ---
+// A partir deste ponto, todas as rotas exigirão um token JWT válido.
+app.use(authMiddleware);
+
+
+// --- ROTAS PROTEGIDAS ---
+// Todas as rotas abaixo são automaticamente protegidas pelo middleware acima.
+app.use('/api', userRoutes);
+
 
 export { app };

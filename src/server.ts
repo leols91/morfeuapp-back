@@ -1,6 +1,7 @@
 // src/server.ts
-import { app } from './app';
-import 'dotenv/config'; // Carrega as variáveis de ambiente do .env
+
+import { app } from './app.js'; // <--- ADICIONE A EXTENSÃO ".js" AQUI
+import 'dotenv/config';
 
 const PORT = process.env.PORT || 3333;
 

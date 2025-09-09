@@ -1,9 +1,9 @@
 {
-  "name": "morfeuapp-back",
+  "name": "morfeuapp-backend",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-
+  "type": "module", 
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
