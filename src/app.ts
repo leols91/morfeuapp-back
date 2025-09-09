@@ -7,7 +7,13 @@ import { authMiddleware } from './core/middlewares/auth.middleware.js';
 
 // Importadores de Rota
 import { authRoutes } from './modules/auth/auth.routes.js';
-import { userRoutes } from './modules/users/user.routes.js';
+// Importamos as rotas de usuário que foram separadas
+import {
+  publicUserRoutes,
+  protectedUserRoutes,
+} from './modules/users/user.routes.js';
+import { pousadaRoutes } from './modules/pousadas/pousada.routes.js';
+import { roomTypeRoutes } from './modules/room-types/room-type.routes.js';
 
 const app: Express = express();
 
@@ -24,18 +30,19 @@ app.get('/', (req, res) => {
 });
 
 // --- ROTAS PÚBLICAS ---
-// Todas as rotas de autenticação são registradas ANTES do middleware de proteção.
-app.use('/api', authRoutes);
-
+// Rotas registradas ANTES do middleware de proteção.
+app.use('/api', authRoutes); // Login
+app.use('/api', publicUserRoutes); // Cadastro de usuário
 
 // --- MIDDLEWARE DE AUTENTICAÇÃO GLOBAL ---
-// A partir deste ponto, todas as rotas exigirão um token JWT válido.
+// A partir deste ponto, todas as rotas abaixo exigirão um token JWT válido.
 app.use(authMiddleware);
 
-
 // --- ROTAS PROTEGIDAS ---
-// Todas as rotas abaixo são automaticamente protegidas pelo middleware acima.
-app.use('/api', userRoutes);
-
+// Rotas registradas APÓS o middleware de proteção.
+app.use('/api', protectedUserRoutes); // Rota /me
+app.use('/api', pousadaRoutes);
+app.use('/api', roomTypeRoutes);
 
 export { app };
+
