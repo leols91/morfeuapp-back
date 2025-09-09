@@ -14,6 +14,7 @@ import {
 } from './modules/users/user.routes.js';
 import { pousadaRoutes } from './modules/pousadas/pousada.routes.js';
 import { roomTypeRoutes } from './modules/room-types/room-type.routes.js';
+import { quartoRoutes } from './modules/quartos/quarto.routes.js';
 
 const app: Express = express();
 
@@ -43,6 +44,7 @@ app.use(authMiddleware);
 app.use('/api', protectedUserRoutes); // Rota /me
 app.use('/api', pousadaRoutes);
 app.use('/api', roomTypeRoutes);
+app.use('/api', quartoRoutes);
 
 export { app };
 

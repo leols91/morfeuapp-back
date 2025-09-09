@@ -8,41 +8,81 @@ datasource db {
 }
 
 // =========================
+// Lookups (Tabelas de Apoio)
+// =========================
+
+model RoomStatus {
+  code        String   @id
+  description String
+  quartos     Quarto[]
+
+  @@map("room_status")
+}
+
+model HousekeepingStatus {
+  code        String   @id
+  description String
+  quartos     Quarto[]
+
+  @@map("housekeeping_status")
+}
+
+// =========================
 // Modelos de Negócio
 // =========================
 
 model Pousada {
-     id                   String     @id @default(uuid())
-     legalName            String
-     tradeName            String
-     phone                String?
-     notes                String?    
-     monthlyProrationMode String     @default("actual_days")
-     createdAt            DateTime   @default(now())
-     updatedAt            DateTime   @updatedAt
-   
-     // Relacionamentos
-     usuariosPousada      UsuarioPousada[]
-     roomTypes            RoomType[]
-   
-     @@map("pousada")
-   }
+  id                   String     @id @default(uuid())
+  legalName            String
+  tradeName            String
+  phone                String?
+  notes                String?
+  monthlyProrationMode String     @default("actual_days")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
 
-// --- ADICIONE O MODELO RoomType ABAIXO ---
+  // Relacionamentos
+  usuariosPousada      UsuarioPousada[]
+  roomTypes            RoomType[]
+  quartos              Quarto[]
+
+  @@map("pousada")
+}
 
 model RoomType {
-  id            String  @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
-  description   String? // Opcional
-  occupancyMode String  // "private" ou "shared"
+  description   String?
+  occupancyMode String
   baseOccupancy Int
   maxOccupancy  Int
 
-  // Relação: Um RoomType pertence a uma Pousada
   pousadaId     String
-  pousada       Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  pousada       Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  quartos       Quarto[] // Relação inversa: um tipo pode ter vários quartos
 
   @@map("room_type")
+}
+
+model Quarto {
+  id                       String   @id @default(uuid())
+  code                     String // Ex: "101", "102A"
+  floor                    String?
+  description              String?
+
+  // Relações
+  pousadaId                String
+  pousada                  Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  roomTypeId               String
+  roomType                 RoomType @relation(fields: [roomTypeId], references: [id], onDelete:Restrict)
+  roomStatusCode           String
+  roomStatus               RoomStatus @relation(fields: [roomStatusCode], references: [code])
+  housekeepingStatusCode   String
+  housekeepingStatus       HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
+  
+  // Garante que o código do quarto seja único por pousada
+  @@unique([pousadaId, code])
+  @@map("quarto")
 }
 
 
@@ -52,7 +92,7 @@ model Usuario {
   username      String    @unique
   email         String    @unique
   phone         String?
-  passwordHash  String    
+  passwordHash  String
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -73,3 +113,4 @@ model UsuarioPousada {
   @@id([usuarioId, pousadaId])
   @@map("usuario_pousada")
 }
+
