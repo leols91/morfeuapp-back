@@ -29,9 +29,96 @@ model Pousada {
   ratePlans            RatePlan[]
   childPolicies        ChildPricingPolicy[]
   addons               Addon[]
-  hospedes             Hospede[] // Relação Inversa
+  hospedes             Hospede[]
+  reservas             Reserva[]
+  productCategories    ProductCategory[]
+  produtos             Produto[]
+  stockMovements       StockMovement[]
+  suppliers            Supplier[] // Relação Inversa
 
   @@map("pousada")
+}
+
+model Supplier {
+  id          String    @id @default(uuid())
+  legalName   String
+  documentId  String?
+  email       String?
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relações
+  pousadaId   String
+  pousada     Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@map("supplier")
+}
+
+model ProductCategory {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relações
+  pousadaId String
+  pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  produtos  Produto[]
+
+  @@map("product_category")
+}
+
+model Produto {
+  id             String    @id @default(uuid())
+  sku            String?
+  name           String
+  unit           String
+  costPrice      Decimal?  @db.Decimal(12, 2)
+  salePrice      Decimal   @db.Decimal(12, 2)
+  stockControl   Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  // Relações
+  pousadaId      String
+  pousada        Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  stockMovements StockMovement[]
+
+  @@map("produto")
+}
+
+model StockMovementType {
+  code        String          @id // "in", "out", "adjust"
+  description String
+  movements   StockMovement[]
+
+  @@map("stock_movement_type")
+}
+
+model StockMovement {
+  id        String   @id @default(uuid())
+  quantity  Decimal  @db.Decimal(12, 3)
+  unitCost  Decimal? @db.Decimal(12, 2)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  // Relações
+  pousadaId String
+  pousada   Pousada           @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  produtoId String
+  produto   Produto           @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  typeCode  String
+  type      StockMovementType @relation(fields: [typeCode], references: [code])
+
+  @@map("stock_movement")
 }
 
 model Hospede {
@@ -52,24 +139,71 @@ model Hospede {
   // Relações
   pousadaId     String
   pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  reservas      ReservaHospede[]
 
   @@map("hospede")
 }
 
-model Addon {
-  id             String   @id @default(uuid())
-  name           String
-  description    String?
-  price          Decimal  @db.Decimal(12, 2)
-  chargeUnit     String
-  whenToCharge   String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+model Reserva {
+  id               String   @id @default(uuid())
+  reservationType  String
+  reservationClass String
+  checkinDate      DateTime
+  checkoutDate     DateTime
+  adults           Int      @default(1)
+  children         Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
 
   // Relações
-  pousadaId      String
-  pousada        Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  pousadaId        String
+  pousada          Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  hospedes         ReservaHospede[]
+  alocacoes        ReservaAlocacao[]
+
+  @@map("reserva")
+}
+
+model ReservaHospede {
+  reservaId     String
+  reserva       Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  hospedeId     String
+  hospede       Hospede  @relation(fields: [hospedeId], references: [id], onDelete: Cascade)
+  isPrimary     Boolean  @default(false)
+
+  @@id([reservaId, hospedeId])
+  @@map("reserva_hospede")
+}
+
+model ReservaAlocacao {
+  id           String    @id @default(uuid())
+  checkinDate  DateTime
+  checkoutDate DateTime
+
+  reservaId    String
+  reserva      Reserva   @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  quartoId     String
+  quarto       Quarto    @relation(fields: [quartoId], references: [id], onDelete: Cascade)
+  camaId       String?
+  cama         Cama?     @relation(fields: [camaId], references: [id], onDelete: Cascade)
+
+  @@map("reserva_alocacao")
+}
+
+model Addon {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(12, 2)
+  chargeUnit   String
+  whenToCharge String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  pousadaId    String
+  pousada      Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
 
   @@map("addon")
 }
@@ -85,7 +219,6 @@ model RoomType {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  // Relações
   pousadaId     String
   pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   quartos       Quarto[]
@@ -107,12 +240,12 @@ model Quarto {
   updatedAt              DateTime    @updatedAt
   deletedAt              DateTime?
 
-  // Relações
   pousada                Pousada            @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   roomType               RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
   roomStatus             RoomStatus         @relation(fields: [roomStatusCode], references: [code])
   housekeepingStatus     HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
   camas                  Cama[]
+  alocacoes              ReservaAlocacao[]
 
   @@map("quarto")
 }
@@ -125,9 +258,9 @@ model Cama {
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
-  // Relações
   quartoId    String
   quarto      Quarto   @relation(fields: [quartoId], references: [id], onDelete: Cascade)
+  alocacoes   ReservaAlocacao[]
 
   @@unique([quartoId, code])
   @@map("cama")
@@ -145,7 +278,6 @@ model Usuario {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  // Relações
   pousadasUsuario UsuarioPousada[]
 
   @@map("usuario")
@@ -156,7 +288,6 @@ model UsuarioPousada {
   pousadaId String
   isDefault Boolean @default(false)
 
-  // Relações
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
 
@@ -189,7 +320,6 @@ model RatePlan {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  // Relações
   pousadaId   String
   pousada     Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   rateRules   RateRule[]
@@ -213,7 +343,6 @@ model RateRule {
   updatedAt  DateTime @updatedAt
   deletedAt  DateTime?
 
-  // Relações
   ratePlanId String
   ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
   roomTypeId String
@@ -223,36 +352,33 @@ model RateRule {
 }
 
 model ChildPricingPolicy {
-  id              String    @id @default(uuid())
-  name            String
-  allowInShared   Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id            String    @id @default(uuid())
+  name          String
+  allowInShared Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
-  // Relações
-  pousadaId       String
-  pousada         Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  bands           ChildPricingBand[]
+  pousadaId     String
+  pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  bands         ChildPricingBand[]
 
   @@map("child_pricing_policy")
 }
 
 model ChildPricingBand {
-  id            String    @id @default(uuid())
-  minAge        Int
-  maxAge        Int
-  chargeMode    String
-  percentValue  Decimal?  @db.Decimal(6, 3)
-  fixedAmount   Decimal?  @db.Decimal(12, 2)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  id           String    @id @default(uuid())
+  minAge       Int
+  maxAge       Int
+  chargeMode   String
+  percentValue Decimal?  @db.Decimal(6, 3)
+  fixedAmount  Decimal?  @db.Decimal(12, 2)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
-  // Relações
-  policyId      String
-  policy        ChildPricingPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policyId     String
+  policy       ChildPricingPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@map("child_pricing_band")
 }
-

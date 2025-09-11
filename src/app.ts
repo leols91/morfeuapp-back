@@ -21,6 +21,11 @@ import { rateRuleRoutes } from './modules/rate-rule/rate-rule.routes.js';
 import { childPolicyRoutes } from './modules/child-pricing-policy/child-pricing-policy.routes.js';
 import { addonRoutes } from './modules/addons/addon.routes.js';
 import { hospedeRoutes } from './modules/hospedes/hospede.routes.js';
+import { reservaRoutes } from './modules/reservas/reserva.routes.js';
+import { productCategoryRoutes } from './modules/product-categories/product-category.routes.js';
+import { produtoRoutes } from './modules/produtos/produto.routes.js';
+import { stockMovementRoutes } from './modules/stock-movements/stock-movement.routes.js';
+import { supplierRoutes } from './modules/supplier/supplier.routes.js';
 
 const app: Express = express();
 
@@ -57,6 +62,10 @@ app.use('/api', rateRuleRoutes);
 app.use('/api', childPolicyRoutes);
 app.use('/api', addonRoutes);
 app.use('/api', hospedeRoutes);
+app.use('/api', reservaRoutes);
+app.use('/api', productCategoryRoutes);
+app.use('/api', produtoRoutes);
+app.use('/api', stockMovementRoutes);
+app.use('/api', supplierRoutes);
 
 export { app };
-
