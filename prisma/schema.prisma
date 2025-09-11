@@ -8,8 +8,112 @@ datasource db {
 }
 
 // =========================
-// Lookups (Tabelas de Apoio)
+// Modelos de Negócio
 // =========================
+
+model Pousada {
+  id                   String     @id @default(uuid())
+  legalName            String
+  tradeName            String
+  phone                String?
+  notes                String?
+  monthlyProrationMode String     @default("actual_days")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  deletedAt            DateTime? // <-- SOFT DELETE
+
+  usuariosPousada      UsuarioPousada[]
+  roomTypes            RoomType[]
+
+  @@map("pousada")
+}
+
+model RoomType {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  occupancyMode String
+  baseOccupancy Int
+  maxOccupancy  Int
+  createdAt     DateTime  @default(now()) // Adicionado para consistência
+  updatedAt     DateTime  @updatedAt     // Adicionado para consistência
+  deletedAt     DateTime? // <-- SOFT DELETE
+
+  pousadaId     String
+  pousada       Pousada    @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  quartos       Quarto[]
+
+  @@map("room_type")
+}
+
+model Quarto {
+  id                     String      @id @default(uuid())
+  pousadaId              String
+  roomTypeId             String
+  code                   String
+  floor                  String?
+  description            String?
+  roomStatusCode         String
+  housekeepingStatusCode String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  deletedAt              DateTime?   // <-- SOFT DELETE
+
+  pousada                Pousada            @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  roomType               RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  roomStatus             RoomStatus         @relation(fields: [roomStatusCode], references: [code])
+  housekeepingStatus     HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
+  camas                  Cama[]
+
+  @@map("quarto")
+}
+
+model Cama {
+  id          String   @id @default(uuid())
+  code        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime? // <-- SOFT DELETE
+
+  quartoId    String
+  quarto      Quarto   @relation(fields: [quartoId], references: [id], onDelete: Cascade)
+
+  @@unique([quartoId, code])
+  @@map("cama")
+}
+
+
+model Usuario {
+  id            String    @id @default(uuid())
+  name          String
+  username      String    @unique
+  email         String    @unique
+  phone         String?
+  passwordHash  String
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime? // <-- SOFT DELETE
+
+  pousadasUsuario UsuarioPousada[]
+
+  @@map("usuario")
+}
+
+// --- Tabelas de Ligação e Lookup (geralmente não precisam de soft delete) ---
+
+model UsuarioPousada {
+  usuarioId String
+  pousadaId String
+  isDefault Boolean @default(false)
+
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, pousadaId])
+  @@map("usuario_pousada")
+}
 
 model RoomStatus {
   code        String   @id
@@ -26,91 +130,3 @@ model HousekeepingStatus {
 
   @@map("housekeeping_status")
 }
-
-// =========================
-// Modelos de Negócio
-// =========================
-
-model Pousada {
-  id                   String     @id @default(uuid())
-  legalName            String
-  tradeName            String
-  phone                String?
-  notes                String?
-  monthlyProrationMode String     @default("actual_days")
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-
-  // Relacionamentos
-  usuariosPousada      UsuarioPousada[]
-  roomTypes            RoomType[]
-  quartos              Quarto[]
-
-  @@map("pousada")
-}
-
-model RoomType {
-  id            String   @id @default(uuid())
-  name          String
-  description   String?
-  occupancyMode String
-  baseOccupancy Int
-  maxOccupancy  Int
-
-  pousadaId     String
-  pousada       Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  quartos       Quarto[] // Relação inversa: um tipo pode ter vários quartos
-
-  @@map("room_type")
-}
-
-model Quarto {
-  id                       String   @id @default(uuid())
-  code                     String // Ex: "101", "102A"
-  floor                    String?
-  description              String?
-
-  // Relações
-  pousadaId                String
-  pousada                  Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  roomTypeId               String
-  roomType                 RoomType @relation(fields: [roomTypeId], references: [id], onDelete:Restrict)
-  roomStatusCode           String
-  roomStatus               RoomStatus @relation(fields: [roomStatusCode], references: [code])
-  housekeepingStatusCode   String
-  housekeepingStatus       HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
-  
-  // Garante que o código do quarto seja único por pousada
-  @@unique([pousadaId, code])
-  @@map("quarto")
-}
-
-
-model Usuario {
-  id            String    @id @default(uuid())
-  name          String
-  username      String    @unique
-  email         String    @unique
-  phone         String?
-  passwordHash  String
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  pousadasUsuario UsuarioPousada[]
-
-  @@map("usuario")
-}
-
-model UsuarioPousada {
-  usuarioId String
-  pousadaId String
-  isDefault Boolean @default(false)
-
-  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-
-  @@id([usuarioId, pousadaId])
-  @@map("usuario_pousada")
-}
-

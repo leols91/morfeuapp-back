@@ -1,51 +1,34 @@
 import type { Request, Response } from 'express';
 import {
-  createQuartoService,
-  listQuartosService,
-  getQuartoByIdService,
-  updateQuartoService,
-} from './quarto.service.js';
+  createCamaService,
+  getCamaByIdService,
+  listCamasService,
+  updateCamaService,
+} from './cama.service.js';
 
 interface AuthRequest extends Request {
   user?: { id: string };
 }
 
-// Lista todos os quartos de uma pousada
-export async function listQuartosController(req: AuthRequest, res: Response) {
+// Busca uma cama específica por ID
+export async function getCamaByIdController(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.id;
-    const { pousadaId } = req.params;
-    if (!userId) {
-      return res.status(401).json({ message: 'Usuário não autenticado.' });
-    }
-    const quartos = await listQuartosService(pousadaId, userId);
-    return res.status(200).json(quartos);
-  } catch (error) {
-    console.error('Erro ao listar quartos:', error);
-    if (error instanceof Error && error.message.includes('Acesso negado')) {
-      return res.status(403).json({ message: error.message });
-    }
-    return res.status(500).json({ message: 'Erro interno do servidor.' });
-  }
-}
+    const { camaId } = req.params;
 
-// Busca um quarto específico pelo seu ID
-export async function getQuartoByIdController(req: AuthRequest, res: Response) {
-  try {
-    const userId = req.user?.id;
-    const { quartoId } = req.params;
     if (!userId) {
       return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
-    const quarto = await getQuartoByIdService(quartoId, userId);
-    return res.status(200).json(quarto);
+
+    const cama = await getCamaByIdService(camaId, userId);
+    return res.status(200).json(cama);
   } catch (error) {
-    console.error('Erro ao buscar quarto:', error);
+    console.error('Erro ao buscar cama por ID:', error);
     if (error instanceof Error) {
       if (error.message.includes('Acesso negado')) {
         return res.status(403).json({ message: error.message });
       }
-      if (error.message.includes('não encontrado')) {
+      if (error.message.includes('não encontrada')) {
         return res.status(404).json({ message: error.message });
       }
     }
@@ -53,23 +36,51 @@ export async function getQuartoByIdController(req: AuthRequest, res: Response) {
   }
 }
 
-// Cria um novo quarto em uma pousada
-export async function createQuartoController(req: AuthRequest, res: Response) {
+// Lista as camas de um quarto
+export async function listCamasController(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.id;
-    const { pousadaId } = req.params;
+    const { quartoId } = req.params;
+
     if (!userId) {
       return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
-    const quarto = await createQuartoService(req.body, pousadaId, userId);
-    return res.status(201).json(quarto);
+
+    const camas = await listCamasService(quartoId, userId);
+    return res.status(200).json(camas);
   } catch (error) {
-    console.error('Erro ao criar quarto:', error);
+    console.error('Erro ao listar camas:', error);
     if (error instanceof Error) {
       if (error.message.includes('Acesso negado')) {
         return res.status(403).json({ message: error.message });
       }
-      if (error.message.includes('Tipo de Quarto inválido')) {
+      if (error.message.includes('Quarto não encontrado')) {
+        return res.status(404).json({ message: error.message });
+      }
+    }
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+}
+
+// Cria uma nova cama
+export async function createCamaController(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { quartoId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ message: 'Usuário não autenticado.' });
+    }
+
+    const cama = await createCamaService(req.body, quartoId, userId);
+    return res.status(201).json(cama);
+  } catch (error) {
+    console.error('Erro ao criar cama:', error);
+    if (error instanceof Error) {
+      if (error.message.includes('Acesso negado')) {
+        return res.status(403).json({ message: error.message });
+      }
+      if (error.message.includes('Quarto não encontrado') || error.message.includes('quarto privado')) {
         return res.status(400).json({ message: error.message });
       }
     }
@@ -77,23 +88,25 @@ export async function createQuartoController(req: AuthRequest, res: Response) {
   }
 }
 
-// Atualiza um quarto específico
-export async function updateQuartoController(req: AuthRequest, res: Response) {
+// Atualiza uma cama existente
+export async function updateCamaController(req: AuthRequest, res: Response) {
   try {
     const userId = req.user?.id;
-    const { quartoId } = req.params;
+    const { camaId } = req.params;
+
     if (!userId) {
       return res.status(401).json({ message: 'Usuário não autenticado.' });
     }
-    const quarto = await updateQuartoService(quartoId, req.body, userId);
-    return res.status(200).json(quarto);
+
+    const cama = await updateCamaService(camaId, req.body, userId);
+    return res.status(200).json(cama);
   } catch (error) {
-    console.error('Erro ao atualizar quarto:', error);
+    console.error('Erro ao atualizar cama:', error);
     if (error instanceof Error) {
       if (error.message.includes('Acesso negado')) {
         return res.status(403).json({ message: error.message });
       }
-      if (error.message.includes('não encontrado')) {
+      if (error.message.includes('não encontrada')) {
         return res.status(404).json({ message: error.message });
       }
     }
