@@ -18,6 +18,9 @@ import { quartoRoutes } from './modules/quartos/quarto.routes.js';
 import { camaRoutes } from './modules/camas/cama.routes.js';
 import { ratePlanRoutes } from './modules/rate-plan/rate-plan.routes.js';
 import { rateRuleRoutes } from './modules/rate-rule/rate-rule.routes.js';
+import { childPolicyRoutes } from './modules/child-pricing-policy/child-pricing-policy.routes.js';
+import { addonRoutes } from './modules/addons/addon.routes.js';
+import { hospedeRoutes } from './modules/hospedes/hospede.routes.js';
 
 const app: Express = express();
 
@@ -51,6 +54,9 @@ app.use('/api', quartoRoutes);
 app.use('/api', camaRoutes);
 app.use('/api', ratePlanRoutes);
 app.use('/api', rateRuleRoutes);
+app.use('/api', childPolicyRoutes);
+app.use('/api', addonRoutes);
+app.use('/api', hospedeRoutes);
 
 export { app };
 

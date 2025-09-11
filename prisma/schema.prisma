@@ -27,8 +27,51 @@ model Pousada {
   roomTypes            RoomType[]
   quartos              Quarto[]
   ratePlans            RatePlan[]
+  childPolicies        ChildPricingPolicy[]
+  addons               Addon[]
+  hospedes             Hospede[] // Relação Inversa
 
   @@map("pousada")
+}
+
+model Hospede {
+  id            String    @id @default(uuid())
+  fullName      String
+  documentId    String?
+  documentType  String?
+  email         String?
+  phone         String?
+  birthDate     DateTime?
+  address       Json?
+  notes         String?
+  blacklisted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relações
+  pousadaId     String
+  pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@map("hospede")
+}
+
+model Addon {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(12, 2)
+  chargeUnit     String
+  whenToCharge   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  // Relações
+  pousadaId      String
+  pousada        Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@map("addon")
 }
 
 model RoomType {
@@ -140,8 +183,8 @@ model HousekeepingStatus {
 model RatePlan {
   id          String    @id @default(uuid())
   name        String
-  chargeScope String // per_room | per_bed
-  periodicity String // nightly | monthly | both
+  chargeScope String
+  periodicity String
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -154,14 +197,11 @@ model RatePlan {
   @@map("rate_plan")
 }
 
-// --- ADICIONE O NOVO MODELO "RateRule" ABAIXO ---
-
 model RateRule {
   id         String   @id @default(uuid())
   startDate  DateTime
   endDate    DateTime
   price      Decimal  @db.Decimal(12, 2)
-  // Dias da semana (seg, ter, qua...)
   mon        Boolean  @default(true)
   tue        Boolean  @default(true)
   wed        Boolean  @default(true)
@@ -176,10 +216,43 @@ model RateRule {
   // Relações
   ratePlanId String
   ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
-
   roomTypeId String
   roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 
   @@map("rate_rule")
+}
+
+model ChildPricingPolicy {
+  id              String    @id @default(uuid())
+  name            String
+  allowInShared   Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relações
+  pousadaId       String
+  pousada         Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  bands           ChildPricingBand[]
+
+  @@map("child_pricing_policy")
+}
+
+model ChildPricingBand {
+  id            String    @id @default(uuid())
+  minAge        Int
+  maxAge        Int
+  chargeMode    String
+  percentValue  Decimal?  @db.Decimal(6, 3)
+  fixedAmount   Decimal?  @db.Decimal(12, 2)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relações
+  policyId      String
+  policy        ChildPricingPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@map("child_pricing_band")
 }
 
