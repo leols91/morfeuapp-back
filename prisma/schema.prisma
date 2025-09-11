@@ -20,10 +20,13 @@ model Pousada {
   monthlyProrationMode String     @default("actual_days")
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
-  deletedAt            DateTime? // <-- SOFT DELETE
+  deletedAt            DateTime?
 
+  // Relações
   usuariosPousada      UsuarioPousada[]
   roomTypes            RoomType[]
+  quartos              Quarto[]
+  ratePlans            RatePlan[]
 
   @@map("pousada")
 }
@@ -35,13 +38,15 @@ model RoomType {
   occupancyMode String
   baseOccupancy Int
   maxOccupancy  Int
-  createdAt     DateTime  @default(now()) // Adicionado para consistência
-  updatedAt     DateTime  @updatedAt     // Adicionado para consistência
-  deletedAt     DateTime? // <-- SOFT DELETE
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
+  // Relações
   pousadaId     String
-  pousada       Pousada    @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   quartos       Quarto[]
+  rateRules     RateRule[]
 
   @@map("room_type")
 }
@@ -57,8 +62,9 @@ model Quarto {
   housekeepingStatusCode String
   createdAt              DateTime    @default(now())
   updatedAt              DateTime    @updatedAt
-  deletedAt              DateTime?   // <-- SOFT DELETE
+  deletedAt              DateTime?
 
+  // Relações
   pousada                Pousada            @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   roomType               RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
   roomStatus             RoomStatus         @relation(fields: [roomStatusCode], references: [code])
@@ -74,15 +80,15 @@ model Cama {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  deletedAt   DateTime? // <-- SOFT DELETE
+  deletedAt   DateTime?
 
+  // Relações
   quartoId    String
   quarto      Quarto   @relation(fields: [quartoId], references: [id], onDelete: Cascade)
 
   @@unique([quartoId, code])
   @@map("cama")
 }
-
 
 model Usuario {
   id            String    @id @default(uuid())
@@ -94,20 +100,20 @@ model Usuario {
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime? // <-- SOFT DELETE
+  deletedAt     DateTime?
 
+  // Relações
   pousadasUsuario UsuarioPousada[]
 
   @@map("usuario")
 }
-
-// --- Tabelas de Ligação e Lookup (geralmente não precisam de soft delete) ---
 
 model UsuarioPousada {
   usuarioId String
   pousadaId String
   isDefault Boolean @default(false)
 
+  // Relações
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
 
@@ -130,3 +136,50 @@ model HousekeepingStatus {
 
   @@map("housekeeping_status")
 }
+
+model RatePlan {
+  id          String    @id @default(uuid())
+  name        String
+  chargeScope String // per_room | per_bed
+  periodicity String // nightly | monthly | both
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relações
+  pousadaId   String
+  pousada     Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  rateRules   RateRule[]
+
+  @@map("rate_plan")
+}
+
+// --- ADICIONE O NOVO MODELO "RateRule" ABAIXO ---
+
+model RateRule {
+  id         String   @id @default(uuid())
+  startDate  DateTime
+  endDate    DateTime
+  price      Decimal  @db.Decimal(12, 2)
+  // Dias da semana (seg, ter, qua...)
+  mon        Boolean  @default(true)
+  tue        Boolean  @default(true)
+  wed        Boolean  @default(true)
+  thu        Boolean  @default(true)
+  fri        Boolean  @default(true)
+  sat        Boolean  @default(true)
+  sun        Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  // Relações
+  ratePlanId String
+  ratePlan   RatePlan @relation(fields: [ratePlanId], references: [id], onDelete: Cascade)
+
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@map("rate_rule")
+}
+

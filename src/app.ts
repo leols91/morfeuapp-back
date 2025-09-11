@@ -16,6 +16,8 @@ import { pousadaRoutes } from './modules/pousadas/pousada.routes.js';
 import { roomTypeRoutes } from './modules/room-types/room-type.routes.js';
 import { quartoRoutes } from './modules/quartos/quarto.routes.js';
 import { camaRoutes } from './modules/camas/cama.routes.js';
+import { ratePlanRoutes } from './modules/rate-plan/rate-plan.routes.js';
+import { rateRuleRoutes } from './modules/rate-rule/rate-rule.routes.js';
 
 const app: Express = express();
 
@@ -47,6 +49,8 @@ app.use('/api', pousadaRoutes);
 app.use('/api', roomTypeRoutes);
 app.use('/api', quartoRoutes);
 app.use('/api', camaRoutes);
+app.use('/api', ratePlanRoutes);
+app.use('/api', rateRuleRoutes);
 
 export { app };
 
