@@ -26,6 +26,8 @@ import { productCategoryRoutes } from './modules/product-categories/product-cate
 import { produtoRoutes } from './modules/produtos/produto.routes.js';
 import { stockMovementRoutes } from './modules/stock-movements/stock-movement.routes.js';
 import { supplierRoutes } from './modules/supplier/supplier.routes.js';
+import { apCategoryRoutes } from './modules/ap-category/ap-category.routes.js';
+import { apInvoiceRoutes } from './modules/ap-invoice/ap-invoice.routes.js';
 
 const app: Express = express();
 
@@ -67,5 +69,7 @@ app.use('/api', productCategoryRoutes);
 app.use('/api', produtoRoutes);
 app.use('/api', stockMovementRoutes);
 app.use('/api', supplierRoutes);
+app.use('/api', apCategoryRoutes);
+app.use('/api', apInvoiceRoutes);
 
 export { app };
