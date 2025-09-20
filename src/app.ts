@@ -28,6 +28,8 @@ import { stockMovementRoutes } from './modules/stock-movements/stock-movement.ro
 import { supplierRoutes } from './modules/supplier/supplier.routes.js';
 import { apCategoryRoutes } from './modules/ap-category/ap-category.routes.js';
 import { apInvoiceRoutes } from './modules/ap-invoice/ap-invoice.routes.js';
+import { cashAccountRoutes } from './modules/cash-account/cash-account.routes.js';
+import { apPaymentRoutes } from './modules/ap-payment/ap-payment.routes.js';
 
 const app: Express = express();
 
@@ -71,5 +73,7 @@ app.use('/api', stockMovementRoutes);
 app.use('/api', supplierRoutes);
 app.use('/api', apCategoryRoutes);
 app.use('/api', apInvoiceRoutes);
+app.use('/api', apPaymentRoutes);
+app.use('/api', cashAccountRoutes);
 
 export { app };
