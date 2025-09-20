@@ -32,6 +32,7 @@ import { cashAccountRoutes } from './modules/cash-account/cash-account.routes.js
 import { apPaymentRoutes } from './modules/ap-payment/ap-payment.routes.js';
 import { folioRoutes } from './modules/folio/folio.routes.js';
 import { paymentRoutes } from './modules/payment/payment.routes.js';
+import { occupancyRoutes } from './modules/occupancy/occupancy.routes.js';
 
 const app: Express = express();
 
@@ -79,5 +80,6 @@ app.use('/api', apPaymentRoutes);
 app.use('/api', cashAccountRoutes);
 app.use('/api', folioRoutes);
 app.use('/api', paymentRoutes);
+app.use('/api', occupancyRoutes);
 
 export { app };
