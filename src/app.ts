@@ -30,6 +30,7 @@ import { apCategoryRoutes } from './modules/ap-category/ap-category.routes.js';
 import { apInvoiceRoutes } from './modules/ap-invoice/ap-invoice.routes.js';
 import { cashAccountRoutes } from './modules/cash-account/cash-account.routes.js';
 import { apPaymentRoutes } from './modules/ap-payment/ap-payment.routes.js';
+import { folioRoutes } from './modules/folio/folio.routes.js';
 
 const app: Express = express();
 
@@ -75,5 +76,6 @@ app.use('/api', apCategoryRoutes);
 app.use('/api', apInvoiceRoutes);
 app.use('/api', apPaymentRoutes);
 app.use('/api', cashAccountRoutes);
+app.use('/api', folioRoutes);
 
 export { app };

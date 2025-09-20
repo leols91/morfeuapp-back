@@ -37,57 +37,110 @@ model Pousada {
   suppliers            Supplier[]
   apCategories         APCategory[]
   apInvoices           APInvoice[]
-  cashAccounts         CashAccount[] // Relação Inversa
+  cashAccounts         CashAccount[]
+  salesChannels        SalesChannel[]
 
   @@map("pousada")
 }
 
-model CashAccount {
-  id              String    @id @default(uuid())
-  name            String
-  typeCode        String    // bank_account, cash_box, etc.
-  openingBalance  Decimal   @default(0) @db.Decimal(14, 2)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+model Reserva {
+  id               String    @id @default(uuid())
+  reservationType  String
+  reservationClass String
+  checkinDate      DateTime
+  checkoutDate     DateTime
+  adults           Int       @default(1)
+  children         Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
 
   // Relações
-  pousadaId       String
-  pousada         Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  apPayments      APPayment[]
-  ledgerEntries   CashLedger[] // Relação Inversa para o Livro Caixa
+  pousadaId        String
+  pousada          Pousada       @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  hospedes         ReservaHospede[]
+  alocacoes        ReservaAlocacao[]
+  channelId        String?
+  channel          SalesChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  folio            Folio? // Relação 1-para-1
 
-  @@map("cash_account")
+  @@map("reserva")
 }
 
-model CashLedger {
+model Folio {
+  id        String       @id @default(uuid())
+  openedAt  DateTime     @default(now())
+  closedAt  DateTime?
+  balance   Decimal      @default(0) @db.Decimal(12, 2)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  // Relações
+  reservaId String       @unique // Garante a relação 1-para-1
+  reserva   Reserva      @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  entries   FolioEntry[]
+
+  @@map("folio")
+}
+
+model FolioEntry {
   id          String   @id @default(uuid())
-  entryType   String   // credit | debit
-  amount      Decimal  @db.Decimal(14, 2)
-  reference   String?
+  kind        String   // room_charge, product, addon, adjustment
+  description String
+  quantity    Decimal  @default(1) @db.Decimal(12, 3)
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  total       Decimal  @db.Decimal(12, 2)
   createdAt   DateTime @default(now())
-
-  // Relações
-  accountId   String
-  account     CashAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  @@map("cash_ledger")
-}
-
-model Supplier {
-  id          String    @id @default(uuid())
-  legalName   String
-  documentId  String?
-  email       String?
-  phone       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
   // Relações
-  pousadaId   String
-  pousada     Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  apInvoices  APInvoice[]
+  folioId     String
+  folio       Folio    @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  produtoId   String?
+  produto     Produto? @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+
+  @@map("folio_entry")
+}
+
+
+// --- DEMAIS MODELOS (SEM ALTERAÇÃO) ---
+model SalesChannel {
+  id                       String    @id @default(uuid())
+  name                     String
+  code                     String
+  defaultCommissionPercent Decimal   @default(0) @db.Decimal(6, 3)
+  settlementModel          String
+  commissionScope          String
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  deletedAt                DateTime?
+
+  pousadaId                String
+  pousada                  Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  supplierId               String?
+  supplier                 Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  reservas                 Reserva[]
+
+  @@unique([pousadaId, code])
+  @@map("sales_channel")
+}
+
+model Supplier {
+  id            String    @id @default(uuid())
+  legalName     String
+  documentId    String?
+  email         String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  pousadaId     String
+  pousada       Pousada      @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  apInvoices    APInvoice[]
+  salesChannels SalesChannel[]
 
   @@map("supplier")
 }
@@ -100,7 +153,6 @@ model APCategory {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  // Relações
   pousadaId   String
   pousada     Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   apItems     APInvoiceItem[]
@@ -118,13 +170,12 @@ model APInvoice {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  // Relações
   pousadaId   String
   pousada     Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   supplierId  String
   supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   items       APInvoiceItem[]
-  payments    APPayment[] // Relação Inversa
+  payments    APPayment[]
 
   @@map("ap_invoice")
 }
@@ -139,7 +190,6 @@ model APInvoiceItem {
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
 
-  // Relações
   apInvoiceId  String
   apInvoice    APInvoice @relation(fields: [apInvoiceId], references: [id], onDelete: Cascade)
   apCategoryId String
@@ -150,6 +200,36 @@ model APInvoiceItem {
   @@map("ap_invoice_item")
 }
 
+model CashAccount {
+  id              String    @id @default(uuid())
+  name            String
+  typeCode        String
+  openingBalance  Decimal   @default(0) @db.Decimal(14, 2)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  pousadaId       String
+  pousada         Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  apPayments      APPayment[]
+  ledgerEntries   CashLedger[]
+
+  @@map("cash_account")
+}
+
+model CashLedger {
+  id          String   @id @default(uuid())
+  entryType   String
+  amount      Decimal  @db.Decimal(14, 2)
+  reference   String?
+  createdAt   DateTime @default(now())
+
+  accountId   String
+  account     CashAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("cash_ledger")
+}
+
 model APPayment {
   id        String   @id @default(uuid())
   amount    Decimal  @db.Decimal(14, 2)
@@ -158,9 +238,8 @@ model APPayment {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  // Relações
   apInvoiceId String
-  apInvoice APInvoice @relation(fields: [apInvoiceId], references: [id], onDelete: Cascade)
+  apInvoice   APInvoice @relation(fields: [apInvoiceId], references: [id], onDelete: Cascade)
   accountId   String
   account     CashAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
 
@@ -174,7 +253,6 @@ model ProductCategory {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  // Relações
   pousadaId String
   pousada   Pousada @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   produtos  Produto[]
@@ -194,19 +272,19 @@ model Produto {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  // Relações
   pousadaId      String
   pousada        Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   categoryId     String
   category       ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   stockMovements StockMovement[]
   apItems        APInvoiceItem[]
+  folioEntries   FolioEntry[]
 
   @@map("produto")
 }
 
 model StockMovementType {
-  code        String          @id // "in", "out", "adjust"
+  code        String          @id
   description String
   movements   StockMovement[]
 
@@ -222,7 +300,6 @@ model StockMovement {
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  // Relações
   pousadaId String
   pousada   Pousada           @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   produtoId String
@@ -248,33 +325,11 @@ model Hospede {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  // Relações
   pousadaId     String
   pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
   reservas      ReservaHospede[]
 
   @@map("hospede")
-}
-
-model Reserva {
-  id               String   @id @default(uuid())
-  reservationType  String
-  reservationClass String
-  checkinDate      DateTime
-  checkoutDate     DateTime
-  adults           Int      @default(1)
-  children         Int      @default(0)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  deletedAt        DateTime?
-
-  // Relações
-  pousadaId        String
-  pousada          Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  hospedes         ReservaHospede[]
-  alocacoes        ReservaAlocacao[]
-
-  @@map("reserva")
 }
 
 model ReservaHospede {
