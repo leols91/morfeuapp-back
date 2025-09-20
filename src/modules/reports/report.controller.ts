@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
-import { getDailyRevenueReportService } from './report.service.js';
+import {
+  getDailyRevenueReportService,
+  getStockBalanceReportService,
+} from './report.service.js';
 
 interface AuthRequest extends Request {
   user?: { id: string };
@@ -39,6 +42,21 @@ export async function getDailyRevenueReportController(req: AuthRequest, res: Res
     return res.status(200).json(report);
   } catch (error) {
     return handleError(res, error, 'gerar relatório de receita diária');
+  }
+}
+
+// --- NOVA FUNÇÃO ---
+export async function getStockBalanceReportController(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { pousadaId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+    const report = await getStockBalanceReportService(pousadaId, userId);
+    return res.status(200).json(report);
+  } catch (error) {
+    return handleError(res, error, 'gerar relatório de saldo de estoque');
   }
 }
 

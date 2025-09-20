@@ -1,5 +1,8 @@
 import { Router } from 'express';
-import { getDailyRevenueReportController } from './report.controller.js';
+import {
+  getDailyRevenueReportController,
+  getStockBalanceReportController,
+} from './report.controller.js';
 
 const reportRoutes: Router = Router();
 
@@ -7,6 +10,12 @@ const reportRoutes: Router = Router();
 reportRoutes.get(
   '/pousadas/:pousadaId/reports/daily-revenue',
   getDailyRevenueReportController,
+);
+
+// Rota para buscar o relatório de saldo de estoque
+reportRoutes.get(
+  '/pousadas/:pousadaId/reports/stock-balance',
+  getStockBalanceReportController,
 );
 
 export { reportRoutes };
