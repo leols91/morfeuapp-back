@@ -1,5 +1,3 @@
-
-
 import type { Request, Response } from 'express';
 import * as folioService from './folio.service.js';
 
@@ -45,3 +43,30 @@ export async function addFolioEntryController(req: AuthRequest, res: Response) {
     return handleError(res, error, 'adicionar lançamento ao folio');
   }
 }
+
+export async function updateFolioEntryController(req: AuthRequest, res: Response) {
+    try {
+        const userId = req.user?.id;
+        const { entryId } = req.params;
+        if (!userId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+        const entry = await folioService.updateFolioEntryService(entryId, req.body, userId);
+        return res.status(200).json(entry);
+    } catch (error) {
+        return handleError(res, error, 'atualizar lançamento do folio');
+    }
+}
+
+export async function deleteFolioEntryController(req: AuthRequest, res: Response) {
+    try {
+        const userId = req.user?.id;
+        const { entryId } = req.params;
+        if (!userId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+        await folioService.deleteFolioEntryService(entryId, userId);
+        return res.status(204).send();
+    } catch (error) {
+        return handleError(res, error, 'deletar lançamento do folio');
+    }
+}
+
