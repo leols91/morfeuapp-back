@@ -40,9 +40,49 @@ model Pousada {
   cashAccounts         CashAccount[]
   salesChannels        SalesChannel[]
   channelStatements    ChannelStatement[]
+  auditLogs            AuditLog[]
 
   @@map("pousada")
 }
+
+model Usuario {
+  id            String    @id @default(uuid())
+  name          String
+  username      String    @unique
+  email         String    @unique
+  phone         String?
+  passwordHash  String
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relações
+  pousadasUsuario UsuarioPousada[]
+  auditLogs       AuditLog[] // Relação Inversa
+
+  @@map("usuario")
+}
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  entity    String // Ex: "Pousada", "Reserva"
+  entityId  String?
+  action    String // Ex: "create", "update", "delete"
+  diff      Json? // Para guardar o "antes" e "depois" em atualizações
+  createdAt DateTime  @default(now())
+
+  // Relações
+  pousadaId String?
+  pousada   Pousada?  @relation(fields: [pousadaId], references: [id], onDelete: SetNull)
+  usuarioId String?
+  usuario   Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  @@map("audit_log")
+}
+
+
+// --- DEMAIS MODELOS (SEM ALTERAÇÃO) ---
 
 model SalesChannel {
   id                       String    @id @default(uuid())
@@ -66,112 +106,6 @@ model SalesChannel {
   @@unique([pousadaId, code])
   @@map("sales_channel")
 }
-
-model Reserva {
-  id                 String    @id @default(uuid())
-  reservationType    String
-  reservationClass   String
-  checkinDate        DateTime
-  checkoutDate       DateTime
-  adults             Int       @default(1)
-  children           Int       @default(0)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  deletedAt          DateTime?
-
-  pousadaId          String
-  pousada            Pousada       @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  hospedes           ReservaHospede[]
-  alocacoes          ReservaAlocacao[]
-  channelId          String?
-  channel            SalesChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
-  folio              Folio?
-  commissionAccruals ChannelCommissionAccrual[]
-
-  @@map("reserva")
-}
-
-model Folio {
-  id        String       @id @default(uuid())
-  openedAt  DateTime     @default(now())
-  closedAt  DateTime?
-  balance   Decimal      @default(0) @db.Decimal(12, 2)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  deletedAt DateTime?
-
-  // Relações
-  reservaId String       @unique
-  reserva   Reserva      @relation(fields: [reservaId], references: [id], onDelete: Cascade)
-  entries   FolioEntry[]
-  payments  Payment[]
-
-  @@map("folio")
-}
-
-model FolioEntry {
-  id                 String   @id @default(uuid())
-  kind               String
-  description        String
-  quantity           Decimal  @default(1) @db.Decimal(12, 3)
-  unitPrice          Decimal  @db.Decimal(12, 2)
-  total              Decimal  @db.Decimal(12, 2)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  deletedAt          DateTime?
-
-  folioId            String
-  folio              Folio    @relation(fields: [folioId], references: [id], onDelete: Cascade)
-  produtoId          String?
-  produto            Produto? @relation(fields: [produtoId], references: [id], onDelete: SetNull)
-  commissionAccrual  ChannelCommissionAccrual?
-
-  @@map("folio_entry")
-}
-
-model ChannelStatement {
-  id            String    @id @default(uuid())
-  periodStart   DateTime
-  periodEnd     DateTime
-  status        String    @default("open")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-
-  // Relações
-  pousadaId     String
-  pousada       Pousada      @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  channelId     String
-  channel       SalesChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  accruals      ChannelCommissionAccrual[]
-
-  @@map("channel_statement")
-}
-
-model ChannelCommissionAccrual {
-  id                String    @id @default(uuid())
-  baseAmount        Decimal   @db.Decimal(12, 2)
-  commissionPercent Decimal   @db.Decimal(6, 3)
-  commissionAmount  Decimal   @db.Decimal(12, 2)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
-
-  // Relações
-  pousadaId         String
-  channelId         String
-  channel           SalesChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  reservaId         String
-  reserva           Reserva      @relation(fields: [reservaId], references: [id], onDelete: Cascade)
-  folioEntryId      String       @unique
-  folioEntry        FolioEntry   @relation(fields: [folioEntryId], references: [id], onDelete: Cascade)
-  statementId       String?
-  statement         ChannelStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
-
-  @@map("channel_commission_accrual")
-}
-
-// --- DEMAIS MODELOS (SEM ALTERAÇÃO) ---
 
 model Supplier {
   id            String    @id @default(uuid())
@@ -379,6 +313,30 @@ model Hospede {
   @@map("hospede")
 }
 
+model Reserva {
+  id                 String    @id @default(uuid())
+  reservationType    String
+  reservationClass   String
+  checkinDate        DateTime
+  checkoutDate       DateTime
+  adults             Int       @default(1)
+  children           Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  pousadaId          String
+  pousada            Pousada       @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  hospedes           ReservaHospede[]
+  alocacoes          ReservaAlocacao[]
+  channelId          String?
+  channel            SalesChannel? @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  folio              Folio?
+  commissionAccruals ChannelCommissionAccrual[]
+
+  @@map("reserva")
+}
+
 model ReservaHospede {
   reservaId     String
   reserva       Reserva  @relation(fields: [reservaId], references: [id], onDelete: Cascade)
@@ -403,6 +361,69 @@ model ReservaAlocacao {
   cama         Cama?     @relation(fields: [camaId], references: [id], onDelete: Cascade)
 
   @@map("reserva_alocacao")
+}
+
+model Folio {
+  id        String       @id @default(uuid())
+  openedAt  DateTime     @default(now())
+  closedAt  DateTime?
+  balance   Decimal      @default(0) @db.Decimal(12, 2)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  reservaId String       @unique
+  reserva   Reserva      @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  entries   FolioEntry[]
+  payments  Payment[]
+
+  @@map("folio")
+}
+
+model FolioEntry {
+  id                 String   @id @default(uuid())
+  kind               String
+  description        String
+  quantity           Decimal  @default(1) @db.Decimal(12, 3)
+  unitPrice          Decimal  @db.Decimal(12, 2)
+  total              Decimal  @db.Decimal(12, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  folioId            String
+  folio              Folio    @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  produtoId          String?
+  produto            Produto? @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  commissionAccrual  ChannelCommissionAccrual?
+
+  @@map("folio_entry")
+}
+
+model PaymentMethod {
+  code        String    @id
+  description String
+  payments    Payment[]
+
+  @@map("payment_method")
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  amount      Decimal  @db.Decimal(12, 2)
+  reference   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  folioId     String
+  folio       Folio         @relation(fields: [folioId], references: [id], onDelete: Cascade)
+  methodCode  String
+  method      PaymentMethod @relation(fields: [methodCode], references: [code], onDelete: Restrict)
+  accountId   String
+  account     CashAccount   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@map("payment")
 }
 
 model Addon {
@@ -478,23 +499,6 @@ model Cama {
 
   @@unique([quartoId, code])
   @@map("cama")
-}
-
-model Usuario {
-  id            String    @id @default(uuid())
-  name          String
-  username      String    @unique
-  email         String    @unique
-  phone         String?
-  passwordHash  String
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-
-  pousadasUsuario UsuarioPousada[]
-
-  @@map("usuario")
 }
 
 model UsuarioPousada {
@@ -597,29 +601,42 @@ model ChildPricingBand {
   @@map("child_pricing_band")
 }
 
-model PaymentMethod {
-  code        String    @id
-  description String
-  payments    Payment[]
+model ChannelStatement {
+  id            String    @id @default(uuid())
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        String    @default("open")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
-  @@map("payment_method")
+  pousadaId     String
+  pousada       Pousada      @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  channelId     String
+  channel       SalesChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  accruals      ChannelCommissionAccrual[]
+
+  @@map("channel_statement")
 }
 
-model Payment {
-  id          String   @id @default(uuid())
-  amount      Decimal  @db.Decimal(12, 2)
-  reference   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  deletedAt   DateTime?
+model ChannelCommissionAccrual {
+  id                String    @id @default(uuid())
+  baseAmount        Decimal   @db.Decimal(12, 2)
+  commissionPercent Decimal   @db.Decimal(6, 3)
+  commissionAmount  Decimal   @db.Decimal(12, 2)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
-  folioId     String
-  folio       Folio         @relation(fields: [folioId], references: [id], onDelete: Cascade)
-  methodCode  String
-  method      PaymentMethod @relation(fields: [methodCode], references: [code], onDelete: Restrict)
-  accountId   String
-  account     CashAccount   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  pousadaId         String
+  channelId         String
+  channel           SalesChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  reservaId         String
+  reserva           Reserva      @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  folioEntryId      String       @unique
+  folioEntry        FolioEntry   @relation(fields: [folioEntryId], references: [id], onDelete: Cascade)
+  statementId       String?
+  statement         ChannelStatement? @relation(fields: [statementId], references: [id], onDelete: SetNull)
 
-  @@map("payment")
+  @@map("channel_commission_accrual")
 }
-
