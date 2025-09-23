@@ -1,30 +1,28 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../core/database/prisma.js';
 import bcrypt from 'bcryptjs';
 
+// --- CRUD Padrão e Funções Públicas ---
+
+/**
+ * Cria um novo usuário (função pública de "sign-up").
+ * Este usuário não é vinculado a nenhuma pousada no momento da criação.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function createUser(userData: any) {
-  // 1A. Verificar se o username já existe
-  const existingUserByUsername = await prisma.usuario.findUnique({
-    where: { username: userData.username },
+export async function createUserService(userData: any) {
+  const existingUser = await prisma.usuario.findFirst({
+    where: {
+      OR: [{ email: userData.email }, { username: userData.username }],
+      deletedAt: null,
+    },
   });
 
-  if (existingUserByUsername) {
-    throw new Error('Este nome de usuário já está em uso.');
+  if (existingUser) {
+    throw new Error('E-mail ou nome de usuário já está em uso.');
   }
 
-  // 1B. Verificar se o e-mail já existe
-  const existingUserByEmail = await prisma.usuario.findUnique({
-    where: { email: userData.email },
-  });
-
-  if (existingUserByEmail) {
-    throw new Error('Este e-mail já está em uso.');
-  }
-
-  // 2. Fazer o hash da senha
   const passwordHash = await bcrypt.hash(userData.password, 8);
 
-  // 3. Criar o usuário no banco de dados, incluindo o username
   const user = await prisma.usuario.create({
     data: {
       name: userData.name,
@@ -34,74 +32,18 @@ export async function createUser(userData: any) {
     },
   });
 
-  // 4. Retornar o usuário criado (sem a senha!)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { passwordHash: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
 }
 
 /**
- * Atualiza os dados de um usuário existente.
- * @param userId O ID do usuário a ser atualizado.
- * @param data Os novos dados para o usuário.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function updateUserService(userId: string, data: any) {
-  // 1. Verificar se o usuário que queremos atualizar realmente existe
-  const userToUpdate = await prisma.usuario.findUnique({
-    where: { id: userId },
-  });
-
-  if (!userToUpdate) {
-    throw new Error('Usuário não encontrado.');
-  }
-
-  // 2. Se um novo username foi enviado, verificar se ele já está em uso por OUTRO usuário
-  if (data.username) {
-    const existingUserByUsername = await prisma.usuario.findUnique({
-      where: { username: data.username },
-    });
-    if (existingUserByUsername && existingUserByUsername.id !== userId) {
-      throw new Error('Este nome de usuário já está em uso.');
-    }
-  }
-
-  // 3. Se um novo e-mail foi enviado, verificar se ele já está em uso por OUTRO usuário
-  if (data.email) {
-    const existingUserByEmail = await prisma.usuario.findUnique({
-      where: { email: data.email },
-    });
-    if (existingUserByEmail && existingUserByEmail.id !== userId) {
-      throw new Error('Este e-mail já está em uso.');
-    }
-  }
-
-  // 4. Atualizar os dados do usuário no banco
-  // Apenas os campos fornecidos em 'data' serão atualizados.
-  const updatedUser = await prisma.usuario.update({
-    where: { id: userId },
-    data: {
-      name: data.name,
-      username: data.username,
-      email: data.email,
-      phone: data.phone,
-      isActive: data.isActive,
-    },
-  });
-
-  // 5. Retornar o usuário atualizado sem o hash da senha
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passwordHash: _, ...userWithoutPassword } = updatedUser;
-  return userWithoutPassword;
-}
-
-/**
- * Lista todos os usuários cadastrados no sistema.
+ * Lista todos os usuários ativos no sistema.
  */
 export async function listUsersService() {
   const users = await prisma.usuario.findMany({
-    // Seleciona explicitamente os campos que queremos retornar,
-    // omitindo o passwordHash por segurança.
+    where: { deletedAt: null },
+    orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,
@@ -110,13 +52,132 @@ export async function listUsersService() {
       phone: true,
       isActive: true,
       createdAt: true,
-      updatedAt: true,
-    },
-    orderBy: {
-      name: 'asc', // Ordena por nome em ordem alfabética
     },
   });
-
   return users;
+}
+
+/**
+ * Atualiza os dados de um usuário específico.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updateUserService(userId: string, data: any) {
+  return prisma.usuario.update({
+    where: { id: userId },
+    data: {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      isActive: data.isActive,
+    },
+  });
+}
+
+/**
+ * Exclui (soft delete) um usuário.
+ */
+export async function deleteUserService(userId: string) {
+  return prisma.usuario.update({
+    where: { id: userId },
+    data: { deletedAt: new Date() },
+  });
+}
+
+// --- Funções Específicas e Protegidas ---
+
+/**
+ * Busca os dados do usuário logado pelo seu ID.
+ */
+export async function getMeService(userId: string) {
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId, deletedAt: null },
+  });
+
+  if (!user) {
+    throw new Error('Usuário não encontrado.');
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { passwordHash, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+}
+
+/**
+ * Atualiza a senha do usuário logado.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function updatePasswordService(userId: string, data: any) {
+  const { oldPassword, newPassword } = data;
+
+  const user = await prisma.usuario.findUnique({
+    where: { id: userId, deletedAt: null },
+  });
+
+  if (!user) {
+    throw new Error('Usuário não encontrado.');
+  }
+
+  const isPasswordCorrect = await bcrypt.compare(oldPassword, user.passwordHash);
+  if (!isPasswordCorrect) {
+    throw new Error('A senha antiga está incorreta.');
+  }
+
+  const newPasswordHash = await bcrypt.hash(newPassword, 8);
+
+  await prisma.usuario.update({
+    where: { id: userId },
+    data: { passwordHash: newPasswordHash },
+  });
+}
+
+/**
+ * Cria um novo usuário e o vincula diretamente a uma pousada (convite).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function inviteUserService(
+  data: any,
+  pousadaId: string,
+  inviterId: string, // ID do usuário que está convidando
+) {
+  // 1. Verificar se o usuário que convida tem permissão na pousada
+  const inviterHasAccess = await prisma.usuarioPousada.findUnique({
+    where: { usuarioId_pousadaId: { usuarioId: inviterId, pousadaId } },
+  });
+  if (!inviterHasAccess) {
+    throw new Error('Acesso negado para convidar usuários para esta pousada.');
+  }
+
+  // 2. Verificar se o e-mail ou username do novo usuário já existem
+  const existingUser = await prisma.usuario.findFirst({
+    where: { OR: [{ email: data.email }, { username: data.username }] },
+  });
+  if (existingUser) {
+    throw new Error('E-mail ou nome de usuário já está em uso.');
+  }
+
+  const passwordHash = await bcrypt.hash(data.password, 8);
+
+  // 3. Usar uma transação para criar o usuário e o vínculo atomicamente
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const newUser = await tx.usuario.create({
+      data: {
+        name: data.name,
+        username: data.username,
+        email: data.email,
+        passwordHash,
+      },
+    });
+
+    await tx.usuarioPousada.create({
+      data: {
+        usuarioId: newUser.id,
+        pousadaId: pousadaId,
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  });
 }
 

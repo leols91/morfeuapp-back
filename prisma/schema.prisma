@@ -41,6 +41,7 @@ model Pousada {
   salesChannels        SalesChannel[]
   channelStatements    ChannelStatement[]
   auditLogs            AuditLog[]
+  configs              PousadaConfig[] // Relação Inversa Adicionada
 
   @@map("pousada")
 }
@@ -59,20 +60,56 @@ model Usuario {
 
   // Relações
   pousadasUsuario UsuarioPousada[]
-  auditLogs       AuditLog[] // Relação Inversa
+  auditLogs       AuditLog[]
+  configs         UserConfig[] // Relação Inversa Adicionada
 
   @@map("usuario")
 }
 
-model AuditLog {
-  id        String    @id @default(uuid())
-  entity    String // Ex: "Pousada", "Reserva"
-  entityId  String?
-  action    String // Ex: "create", "update", "delete"
-  diff      Json? // Para guardar o "antes" e "depois" em atualizações
-  createdAt DateTime  @default(now())
+// --- NOVOS MODELOS ADICIONADOS ---
+
+model PousadaConfig {
+  id          String   @id @default(uuid())
+  configName  String   // Ex: "theme_color"
+  configValue String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
 
   // Relações
+  pousadaId   String
+  pousada     Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+
+  @@unique([pousadaId, configName])
+  @@map("pousada_config")
+}
+
+model UserConfig {
+  id             String   @id @default(uuid())
+  userConfigName String   // Ex: "theme_mode"
+  userConfigValue String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  deletedAt      DateTime?
+
+  // Relações
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, userConfigName])
+  @@map("user_config")
+}
+
+// --- DEMAIS MODELOS ---
+
+model AuditLog {
+  id        String    @id @default(uuid())
+  entity    String
+  entityId  String?
+  action    String
+  diff      Json?
+  createdAt DateTime  @default(now())
+
   pousadaId String?
   pousada   Pousada?  @relation(fields: [pousadaId], references: [id], onDelete: SetNull)
   usuarioId String?
@@ -80,9 +117,6 @@ model AuditLog {
 
   @@map("audit_log")
 }
-
-
-// --- DEMAIS MODELOS (SEM ALTERAÇÃO) ---
 
 model SalesChannel {
   id                       String    @id @default(uuid())
@@ -640,3 +674,4 @@ model ChannelCommissionAccrual {
 
   @@map("channel_commission_accrual")
 }
+

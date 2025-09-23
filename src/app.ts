@@ -36,6 +36,9 @@ import { occupancyRoutes } from './modules/occupancy/occupancy.routes.js';
 import { channelCommissionRoutes } from './modules/channel-commission/channel-commission.routes.js';
 import { channelStatementRoutes } from './modules/channel-statements/channel-statement.routes.js';
 import { reportRoutes } from './modules/reports/report.routes.js';
+import { userConfigRoutes } from './modules/user-configs/user-config.routes.js';
+import { pousadaConfigRoutes } from './modules/pousada-configs/pousada-config.routes.js';
+
 
 const app: Express = express();
 
@@ -87,5 +90,7 @@ app.use('/api', occupancyRoutes);
 app.use('/api', channelCommissionRoutes);
 app.use('/api', channelStatementRoutes);
 app.use('/api', reportRoutes);
+app.use('/api', userConfigRoutes);
+app.use('/api', pousadaConfigRoutes);
 
 export { app };

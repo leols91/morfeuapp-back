@@ -1,28 +1,32 @@
 import { Router } from 'express';
 import {
   createUserController,
+  deleteUserController,
+  getMeController,
+  inviteUserController,
+  listUsersController,
+  updatePasswordController,
   updateUserController,
-  listUsersController, // Importa o novo controller
 } from './user.controller.js';
 
-// --- Rotas Públicas ---
-const publicUserRoutes: Router = Router();
-// A criação de usuários (cadastro) é pública
+// --- ROTAS PÚBLICAS ---
+// Rota para um novo usuário se cadastrar no sistema (sign-up)
+export const publicUserRoutes: Router = Router();
 publicUserRoutes.post('/users', createUserController);
 
-// --- Rotas Protegidas ---
-const protectedUserRoutes: Router = Router();
-// A rota para ver os próprios dados é protegida
-protectedUserRoutes.get('/me', (req, res) => {
-  // @ts-expect-error - A propriedade 'user' é adicionada pelo middleware global
-  return res.status(200).json({ user: req.user });
-});
+// --- ROTAS PROTEGIDAS ---
+// Exigem que o usuário esteja autenticado para serem acessadas
+export const protectedUserRoutes: Router = Router();
 
-// A rota para ATUALIZAR um usuário é protegida
-protectedUserRoutes.patch('/users/:userId', updateUserController);
+// Rotas para o próprio usuário logado
+protectedUserRoutes.get('/users/me', getMeController);
+protectedUserRoutes.patch('/users/me/password', updatePasswordController);
 
-// A rota para LISTAR todos os usuários é protegida
+// Rotas de gestão (geralmente para administradores)
 protectedUserRoutes.get('/users', listUsersController);
+protectedUserRoutes.patch('/users/:userId', updateUserController);
+protectedUserRoutes.delete('/users/:userId', deleteUserController);
 
-export { publicUserRoutes, protectedUserRoutes };
+// Rota para um usuário logado convidar um novo usuário para uma pousada específica
+protectedUserRoutes.post('/pousadas/:pousadaId/users', inviteUserController);
 
