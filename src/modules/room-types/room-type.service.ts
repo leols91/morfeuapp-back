@@ -1,72 +1,73 @@
 import { prisma } from '../../core/database/prisma.js';
 
-/**
- * Helper function to check if a user has access to a specific pousada.
- * Throws an error if access is denied.
- * @param pousadaId The ID of the pousada to check.
- * @param userId The ID of the logged-in user.
- */
-async function checkPousadaAccess(pousadaId: string, userId: string) {
+// Helper de autorização
+async function checkRoomTypePermissions(roomTypeId: string, userId: string) {
+  const roomType = await prisma.roomType.findFirst({
+    where: { id: roomTypeId, deletedAt: null },
+  });
+  if (!roomType) throw new Error('Tipo de quarto não encontrado.');
+
   const userHasAccess = await prisma.usuarioPousada.findUnique({
     where: {
       usuarioId_pousadaId: {
         usuarioId: userId,
-        pousadaId: pousadaId,
+        pousadaId: roomType.pousadaId,
       },
     },
   });
+  if (!userHasAccess) throw new Error('Acesso negado.');
 
-  if (!userHasAccess) {
-    throw new Error('Acesso negado. Você não tem permissão para acessar recursos desta pousada.');
-  }
+  return roomType;
 }
 
-/**
- * Lists all room types for a specific pousada.
- * @param pousadaId The ID of the pousada.
- * @param userId The ID of the logged-in user for permission checking.
- */
+// Lista os tipos de quarto de uma pousada
 export async function listRoomTypesService(pousadaId: string, userId: string) {
-  await checkPousadaAccess(pousadaId, userId);
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
+    // CORRIGIDO: Usando a estrutura correta para a chave composta
+    where: { usuarioId_pousadaId: { usuarioId: userId, pousadaId: pousadaId } },
+  });
+  if (!userHasAccess) throw new Error('Acesso negado.');
 
-  return await prisma.roomType.findMany({
-    where: { pousadaId },
+  return prisma.roomType.findMany({
+    where: { pousadaId, deletedAt: null },
+    include: {
+      amenities: {
+        include: {
+          amenity: true,
+        },
+      },
+    },
     orderBy: { name: 'asc' },
   });
 }
 
-/**
- * Gets a single room type by its ID, checking user access.
- * @param roomTypeId The ID of the room type to fetch.
- * @param userId The ID of the logged-in user.
- */
+// Busca um tipo de quarto por ID
 export async function getRoomTypeByIdService(roomTypeId: string, userId: string) {
-  const roomType = await prisma.roomType.findUnique({
+  await checkRoomTypePermissions(roomTypeId, userId);
+  return prisma.roomType.findUnique({
     where: { id: roomTypeId },
+    include: {
+      amenities: {
+        include: {
+          amenity: true,
+        },
+      },
+    },
   });
-
-  if (!roomType) {
-    throw new Error('Tipo de Quarto não encontrado.');
-  }
-
-  // Permission check is based on the pousada of the found room type
-  await checkPousadaAccess(roomType.pousadaId, userId);
-  return roomType;
 }
 
-/**
- * Creates a new room type for a pousada.
- * @param data The data for the new room type.
- * @param pousadaId The ID of the pousada.
- * @param userId The ID of the logged-in user.
- */
+// Cria um novo tipo de quarto
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createRoomTypeService(data: any, pousadaId: string, userId: string) {
-  await checkPousadaAccess(pousadaId, userId);
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
+    // CORRIGIDO: Usando a estrutura correta para a chave composta
+    where: { usuarioId_pousadaId: { usuarioId: userId, pousadaId: pousadaId } },
+  });
+  if (!userHasAccess) throw new Error('Acesso negado.');
 
-  const roomType = await prisma.roomType.create({
+  return prisma.roomType.create({
     data: {
-      pousadaId: pousadaId,
+      pousadaId,
       name: data.name,
       description: data.description,
       occupancyMode: data.occupancyMode,
@@ -74,29 +75,13 @@ export async function createRoomTypeService(data: any, pousadaId: string, userId
       maxOccupancy: data.maxOccupancy,
     },
   });
-
-  return roomType;
 }
 
-/**
- * Updates an existing room type.
- * @param roomTypeId The ID of the room type to update.
- * @param data The new data for the room type.
- * @param userId The ID of the logged-in user.
- */
+// Atualiza um tipo de quarto
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateRoomTypeService(roomTypeId: string, data: any, userId: string) {
-  const roomTypeToUpdate = await prisma.roomType.findUnique({
-    where: { id: roomTypeId },
-  });
-
-  if (!roomTypeToUpdate) {
-    throw new Error('Tipo de Quarto não encontrado.');
-  }
-
-  await checkPousadaAccess(roomTypeToUpdate.pousadaId, userId);
-
-  return await prisma.roomType.update({
+  await checkRoomTypePermissions(roomTypeId, userId);
+  return prisma.roomType.update({
     where: { id: roomTypeId },
     data: {
       name: data.name,
@@ -106,5 +91,49 @@ export async function updateRoomTypeService(roomTypeId: string, data: any, userI
       maxOccupancy: data.maxOccupancy,
     },
   });
+}
+
+// Deleta (soft delete) um tipo de quarto
+export async function deleteRoomTypeService(roomTypeId: string, userId: string) {
+  await checkRoomTypePermissions(roomTypeId, userId);
+  return prisma.roomType.update({
+    where: { id: roomTypeId },
+    data: { deletedAt: new Date() },
+  });
+}
+
+// --- NOVAS FUNÇÕES ---
+
+// Associa uma comodidade a um tipo de quarto
+export async function addAmenityToRoomTypeService(roomTypeId: string, amenityId: string, userId: string) {
+  const roomType = await checkRoomTypePermissions(roomTypeId, userId);
+
+  const amenity = await prisma.amenity.findFirst({ where: { id: amenityId, deletedAt: null } });
+  if (!amenity) throw new Error('Comodidade não encontrada.');
+  if (amenity.pousadaId !== roomType.pousadaId) {
+    throw new Error('Comodidade não pertence à mesma pousada do tipo de quarto.');
+  }
+
+  // Cria o vínculo na tabela de junção
+  return prisma.roomTypeAmenity.create({
+    data: {
+      roomTypeId,
+      amenityId,
+    },
+  });
+}
+
+// Remove a associação de uma comodidade de um tipo de quarto
+export async function removeAmenityFromRoomTypeService(roomTypeId: string, amenityId: string, userId: string) {
+    await checkRoomTypePermissions(roomTypeId, userId);
+
+    return prisma.roomTypeAmenity.delete({
+        where: {
+            roomTypeId_amenityId: {
+                roomTypeId,
+                amenityId,
+            }
+        }
+    });
 }
 

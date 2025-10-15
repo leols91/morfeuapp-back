@@ -41,10 +41,95 @@ model Pousada {
   salesChannels        SalesChannel[]
   channelStatements    ChannelStatement[]
   auditLogs            AuditLog[]
-  configs              PousadaConfig[] // Relação Inversa Adicionada
+  configs              PousadaConfig[]
+  amenities            Amenity[] // Relação Inversa para Comodidades
 
   @@map("pousada")
 }
+
+// --- NOVOS MODELOS PARA COMODIDADES ---
+
+model Amenity {
+  id        String    @id @default(uuid())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relações
+  pousadaId String
+  pousada   Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  roomTypes RoomTypeAmenity[]
+
+  @@unique([pousadaId, name])
+  @@map("amenity")
+}
+
+model RoomTypeAmenity {
+  // Relações (tabela de junção)
+  roomTypeId String
+  roomType   RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  amenityId  String
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([roomTypeId, amenityId])
+  @@map("room_type_amenity")
+}
+
+
+// --- MODELOS ATUALIZADOS ---
+
+model RoomType {
+  id            String    @id @default(uuid())
+  name          String
+  description   String?
+  occupancyMode String
+  baseOccupancy Int
+  maxOccupancy  Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relações
+  pousadaId     String
+  pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  quartos       Quarto[]
+  rateRules     RateRule[]
+  amenities     RoomTypeAmenity[] // Relação para a tabela de junção
+
+  @@map("room_type")
+}
+
+model Quarto {
+  id                     String      @id @default(uuid())
+  pousadaId              String
+  roomTypeId             String
+  code                   String
+  floor                  String?
+  description            String?
+  // --- CAMPOS DE OVERRIDE ADICIONADOS ---
+  baseOccupancy          Int? // Opcional
+  maxOccupancy           Int? // Opcional
+  // --- FIM DOS NOVOS CAMPOS ---
+  roomStatusCode         String
+  housekeepingStatusCode String
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+  deletedAt              DateTime?
+
+  // Relações
+  pousada                Pousada            @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
+  roomType               RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  roomStatus             RoomStatus         @relation(fields: [roomStatusCode], references: [code])
+  housekeepingStatus     HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
+  camas                  Cama[]
+  alocacoes              ReservaAlocacao[]
+
+  @@map("quarto")
+}
+
+
+// --- DEMAIS MODELOS (SEM ALTERAÇÃO) ---
 
 model Usuario {
   id            String    @id @default(uuid())
@@ -58,25 +143,21 @@ model Usuario {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  // Relações
   pousadasUsuario UsuarioPousada[]
   auditLogs       AuditLog[]
-  configs         UserConfig[] // Relação Inversa Adicionada
+  configs         UserConfig[]
 
   @@map("usuario")
 }
 
-// --- NOVOS MODELOS ADICIONADOS ---
-
 model PousadaConfig {
   id          String   @id @default(uuid())
-  configName  String   // Ex: "theme_color"
+  configName  String
   configValue String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
-  // Relações
   pousadaId   String
   pousada     Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
 
@@ -85,22 +166,19 @@ model PousadaConfig {
 }
 
 model UserConfig {
-  id             String   @id @default(uuid())
-  userConfigName String   // Ex: "theme_mode"
+  id              String   @id @default(uuid())
+  userConfigName  String
   userConfigValue String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
 
-  // Relações
-  usuarioId      String
-  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId       String
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, userConfigName])
   @@map("user_config")
 }
-
-// --- DEMAIS MODELOS ---
 
 model AuditLog {
   id        String    @id @default(uuid())
@@ -475,48 +553,6 @@ model Addon {
   pousada      Pousada  @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
 
   @@map("addon")
-}
-
-model RoomType {
-  id            String    @id @default(uuid())
-  name          String
-  description   String?
-  occupancyMode String
-  baseOccupancy Int
-  maxOccupancy  Int
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-
-  pousadaId     String
-  pousada       Pousada   @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  quartos       Quarto[]
-  rateRules     RateRule[]
-
-  @@map("room_type")
-}
-
-model Quarto {
-  id                     String      @id @default(uuid())
-  pousadaId              String
-  roomTypeId             String
-  code                   String
-  floor                  String?
-  description            String?
-  roomStatusCode         String
-  housekeepingStatusCode String
-  createdAt              DateTime    @default(now())
-  updatedAt              DateTime    @updatedAt
-  deletedAt              DateTime?
-
-  pousada                Pousada            @relation(fields: [pousadaId], references: [id], onDelete: Cascade)
-  roomType               RoomType           @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
-  roomStatus             RoomStatus         @relation(fields: [roomStatusCode], references: [code])
-  housekeepingStatus     HousekeepingStatus @relation(fields: [housekeepingStatusCode], references: [code])
-  camas                  Cama[]
-  alocacoes              ReservaAlocacao[]
-
-  @@map("quarto")
 }
 
 model Cama {

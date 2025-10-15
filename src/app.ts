@@ -38,6 +38,7 @@ import { channelStatementRoutes } from './modules/channel-statements/channel-sta
 import { reportRoutes } from './modules/reports/report.routes.js';
 import { userConfigRoutes } from './modules/user-configs/user-config.routes.js';
 import { pousadaConfigRoutes } from './modules/pousada-configs/pousada-config.routes.js';
+import { amenityRoutes } from './modules/amenities/amenity.routes.js';
 
 
 const app: Express = express();
@@ -92,5 +93,6 @@ app.use('/api', channelStatementRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', userConfigRoutes);
 app.use('/api', pousadaConfigRoutes);
+app.use('/api', amenityRoutes);
 
 export { app };

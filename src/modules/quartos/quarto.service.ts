@@ -1,137 +1,116 @@
 import { prisma } from '../../core/database/prisma.js';
 
-/**
- * Verifica se o usuário tem acesso a uma pousada específica.
- * Lança um erro se o acesso for negado.
- * @param pousadaId O ID da pousada a ser verificada.
- * @param userId O ID do usuário logado.
- */
-async function checkPousadaAccess(pousadaId: string, userId: string) {
-  const userHasAccess = await prisma.usuarioPousada.findFirst({
+// Helper de autorização
+async function checkQuartoPermissions(quartoId: string, userId: string) {
+  const quarto = await prisma.quarto.findFirst({
+    where: { id: quartoId, deletedAt: null },
+  });
+  if (!quarto) throw new Error('Quarto não encontrado.');
+
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
     where: {
-      pousadaId: pousadaId,
-      usuarioId: userId,
+      usuarioId_pousadaId: {
+        usuarioId: userId,
+        pousadaId: quarto.pousadaId,
+      },
     },
   });
-
-  if (!userHasAccess) {
-    throw new Error('Acesso negado. Você não tem permissão para acessar recursos desta pousada.');
-  }
-}
-
-/**
- * Lista todos os quartos de uma pousada específica.
- * @param pousadaId O ID da pousada.
- * @param userId O ID do usuário logado para verificação de permissão.
- */
-export async function listQuartosService(pousadaId: string, userId: string) {
-  await checkPousadaAccess(pousadaId, userId);
-
-  return await prisma.quarto.findMany({
-    where: { pousadaId },
-    include: {
-      roomType: true,
-      roomStatus: true,
-      housekeepingStatus: true,
-    },
-    orderBy: {
-      code: 'asc',
-    },
-  });
-}
-
-/**
- * Busca os detalhes de um único quarto, verificando o acesso do usuário.
- * @param quartoId O ID do quarto a ser buscado.
- * @param userId O ID do usuário logado.
- */
-export async function getQuartoByIdService(quartoId: string, userId: string) {
-  const quarto = await prisma.quarto.findUnique({
-    where: { id: quartoId },
-    include: {
-      roomType: true,
-      roomStatus: true,
-      housekeepingStatus: true,
-    },
-  });
-
-  if (!quarto) {
-    throw new Error('Quarto não encontrado.');
-  }
-
-  // A verificação de acesso é feita com base na pousada do quarto encontrado
-  await checkPousadaAccess(quarto.pousadaId, userId);
+  if (!userHasAccess) throw new Error('Acesso negado.');
 
   return quarto;
 }
 
-/**
- * Cria um novo quarto dentro de uma pousada.
- * @param data Os dados do novo quarto.
- * @param pousadaId O ID da pousada onde o quarto será criado.
- * @param userId O ID do usuário logado.
- */
+// Lista os quartos de uma pousada
+export async function listQuartosService(pousadaId: string, userId: string) {
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
+    where: { usuarioId_pousadaId: { usuarioId: userId, pousadaId: pousadaId } },
+  });
+  if (!userHasAccess) throw new Error('Acesso negado.');
+
+  return prisma.quarto.findMany({
+    where: { pousadaId, deletedAt: null },
+    include: {
+      roomType: true,
+      roomStatus: true,
+      housekeepingStatus: true,
+    },
+    orderBy: { code: 'asc' },
+  });
+}
+
+// Busca um quarto por ID
+export async function getQuartoByIdService(quartoId: string, userId: string) {
+  await checkQuartoPermissions(quartoId, userId);
+  return prisma.quarto.findUnique({
+    where: { id: quartoId },
+    include: {
+        roomType: {
+            include: {
+                amenities: {
+                    include: {
+                        amenity: true
+                    }
+                }
+            }
+        },
+        camas: true,
+    }
+  });
+}
+
+// Cria um novo Quarto
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createQuartoService(data: any, pousadaId: string, userId: string) {
-  await checkPousadaAccess(pousadaId, userId);
-
-  // 1. Validação de Regra de Negócio: O roomTypeId pertence a esta pousada?
-  const roomType = await prisma.roomType.findFirst({
-    where: {
-      id: data.roomTypeId,
-      pousadaId: pousadaId,
-    },
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
+    where: { usuarioId_pousadaId: { usuarioId: userId, pousadaId: pousadaId } },
   });
-  if (!roomType) {
-    throw new Error('Tipo de Quarto inválido ou não pertence a esta pousada.');
-  }
+  if (!userHasAccess) throw new Error('Acesso negado.');
 
-  // 2. Criar o Quarto
-  const quarto = await prisma.quarto.create({
+  return prisma.quarto.create({
     data: {
-      pousadaId: pousadaId,
+      pousadaId,
       roomTypeId: data.roomTypeId,
       code: data.code,
       floor: data.floor,
       description: data.description,
-      roomStatusCode: 'available', // Default
-      housekeepingStatusCode: 'clean', // Default
+      // --- LÓGICA DE OVERRIDE ADICIONADA ---
+      baseOccupancy: data.baseOccupancy, // Será salvo se enviado, senão null
+      maxOccupancy: data.maxOccupancy,   // Será salvo se enviado, senão null
+      // --- FIM DA LÓGICA ---
+      roomStatusCode: 'available',
+      housekeepingStatusCode: 'clean',
     },
   });
-  return quarto;
 }
 
-/**
- * Atualiza os dados de um quarto existente.
- * @param quartoId O ID do quarto a ser atualizado.
- * @param data Os novos dados para o quarto.
- * @param userId O ID do usuário logado.
- */
+// Atualiza um quarto existente
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function updateQuartoService(quartoId: string, data: any, userId: string) {
-  // Para atualizar, primeiro precisamos buscar o quarto para saber a qual pousada ele pertence
-  const quartoToUpdate = await prisma.quarto.findUnique({
-    where: { id: quartoId },
-  });
+  await checkQuartoPermissions(quartoId, userId);
 
-  if (!quartoToUpdate) {
-    throw new Error('Quarto não encontrado.');
-  }
-
-  // Agora verificamos se o usuário tem acesso à pousada do quarto
-  await checkPousadaAccess(quartoToUpdate.pousadaId, userId);
-
-  // Atualizar o Quarto
-  const updatedQuarto = await prisma.quarto.update({
+  return prisma.quarto.update({
     where: { id: quartoId },
     data: {
+      roomTypeId: data.roomTypeId,
       code: data.code,
       floor: data.floor,
       description: data.description,
+      // --- LÓGICA DE OVERRIDE ADICIONADA ---
+      baseOccupancy: data.baseOccupancy,
+      maxOccupancy: data.maxOccupancy,
+      // --- FIM DA LÓGICA ---
       roomStatusCode: data.roomStatusCode,
       housekeepingStatusCode: data.housekeepingStatusCode,
     },
   });
-  return updatedQuarto;
+}
+
+// Deleta (soft delete) um quarto
+export async function deleteQuartoService(quartoId: string, userId: string) {
+  await checkQuartoPermissions(quartoId, userId);
+  return prisma.quarto.update({
+    where: { id: quartoId },
+    data: { deletedAt: new Date() },
+  });
 }
 
