@@ -12,3 +12,4 @@ amenityRoutes.patch('/amenities/:amenityId', amenityController.updateAmenityCont
 amenityRoutes.delete('/amenities/:amenityId', amenityController.deleteAmenityController);
 
 export { amenityRoutes };
+

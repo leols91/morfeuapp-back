@@ -69,3 +69,4 @@ export async function deleteAmenityController(req: AuthRequest, res: Response) {
     return handleError(res, error, 'deletar comodidade');
   }
 }
+

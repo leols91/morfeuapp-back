@@ -1,6 +1,6 @@
 import { prisma } from '../../core/database/prisma.js';
 
-// Helper de autorização
+// Helper de autorização para evitar repetição de código
 async function checkAmenityPermissions(amenityId: string, userId: string) {
   const amenity = await prisma.amenity.findFirst({
     where: { id: amenityId, deletedAt: null },
@@ -65,3 +65,4 @@ export async function deleteAmenityService(amenityId: string, userId: string) {
     data: { deletedAt: new Date() },
   });
 }
+

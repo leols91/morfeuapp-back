@@ -5,6 +5,8 @@ import {
   getQuartoByIdService,
   listQuartosService,
   updateQuartoService,
+  addAmenityToQuartoService,
+  removeAmenityFromQuartoService,
 } from './quarto.service.js';
 
 interface AuthRequest extends Request {
@@ -19,6 +21,9 @@ function handleError(res: Response, error: unknown, context: string) {
     }
     if (error.message.includes('não encontrad')) {
       return res.status(404).json({ message: error.message });
+    }
+    if (error.message.includes('não pertence')) {
+      return res.status(400).json({ message: error.message });
     }
   }
   return res.status(500).json({ message: 'Erro interno do servidor.' });
@@ -86,6 +91,34 @@ export async function deleteQuartoController(req: AuthRequest, res: Response) {
     return res.status(204).send();
   } catch (error) {
     return handleError(res, error, 'deletar quarto');
+  }
+}
+
+// --- NOVOS CONTROLLERS ---
+export async function addAmenityToQuartoController(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { quartoId } = req.params;
+    const { amenityId } = req.body;
+    if (!userId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+    await addAmenityToQuartoService(quartoId, amenityId, userId);
+    return res.status(204).send();
+  } catch (error) {
+    return handleError(res, error, 'associar comodidade ao quarto');
+  }
+}
+
+export async function removeAmenityFromQuartoController(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    const { quartoId, amenityId } = req.params;
+    if (!userId) return res.status(401).json({ message: 'Usuário não autenticado.' });
+
+    await removeAmenityFromQuartoService(quartoId, amenityId, userId);
+    return res.status(204).send();
+  } catch (error) {
+    return handleError(res, error, 'remover associação de comodidade do quarto');
   }
 }
 

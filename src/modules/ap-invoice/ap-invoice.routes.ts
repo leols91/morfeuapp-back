@@ -1,13 +1,27 @@
 import { Router } from 'express';
-import * as apInvoiceController from './ap-invoice.controller.js';
+import {
+  createAPInvoiceController,
+  deleteAPInvoiceController,
+  listAPInvoicesController,
+} from './ap-invoice.controller.js';
 
 const apInvoiceRoutes: Router = Router();
 
-// Rotas aninhadas sob Pousada
-apInvoiceRoutes.post('/pousadas/:pousadaId/ap-invoices', apInvoiceController.createAPInvoiceController);
-apInvoiceRoutes.get('/pousadas/:pousadaId/ap-invoices', apInvoiceController.listAPInvoicesController);
+// Rotas aninhadas sob Pousada para criar e listar faturas
+apInvoiceRoutes.post(
+  '/pousadas/:pousadaId/ap-invoices',
+  createAPInvoiceController,
+);
+apInvoiceRoutes.get(
+  '/pousadas/:pousadaId/ap-invoices',
+  listAPInvoicesController,
+);
 
-// Rotas diretas para uma Fatura
-apInvoiceRoutes.delete('/ap-invoices/:apInvoiceId', apInvoiceController.deleteAPInvoiceController);
+// Rota direta para deletar uma Fatura específica
+apInvoiceRoutes.delete(
+  '/ap-invoices/:apInvoiceId',
+  deleteAPInvoiceController,
+);
 
 export { apInvoiceRoutes };
+

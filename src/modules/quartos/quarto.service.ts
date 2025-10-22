@@ -38,7 +38,7 @@ export async function listQuartosService(pousadaId: string, userId: string) {
   });
 }
 
-// Busca um quarto por ID
+// Busca um quarto por ID, incluindo suas comodidades herdadas e próprias
 export async function getQuartoByIdService(quartoId: string, userId: string) {
   await checkQuartoPermissions(quartoId, userId);
   return prisma.quarto.findUnique({
@@ -53,7 +53,12 @@ export async function getQuartoByIdService(quartoId: string, userId: string) {
                 }
             }
         },
-        camas: true,
+        amenities: { // Inclui as comodidades específicas do quarto
+          include: {
+            amenity: true,
+          },
+        },
+        camas: { where: { deletedAt: null } },
     }
   });
 }
@@ -71,12 +76,11 @@ export async function createQuartoService(data: any, pousadaId: string, userId: 
       pousadaId,
       roomTypeId: data.roomTypeId,
       code: data.code,
+      name: data.name, // --- CAMPO ADICIONADO ---
       floor: data.floor,
       description: data.description,
-      // --- LÓGICA DE OVERRIDE ADICIONADA ---
-      baseOccupancy: data.baseOccupancy, // Será salvo se enviado, senão null
-      maxOccupancy: data.maxOccupancy,   // Será salvo se enviado, senão null
-      // --- FIM DA LÓGICA ---
+      baseOccupancy: data.baseOccupancy,
+      maxOccupancy: data.maxOccupancy,
       roomStatusCode: 'available',
       housekeepingStatusCode: 'clean',
     },
@@ -93,12 +97,11 @@ export async function updateQuartoService(quartoId: string, data: any, userId: s
     data: {
       roomTypeId: data.roomTypeId,
       code: data.code,
+      name: data.name, // --- CAMPO ADICIONADO ---
       floor: data.floor,
       description: data.description,
-      // --- LÓGICA DE OVERRIDE ADICIONADA ---
       baseOccupancy: data.baseOccupancy,
       maxOccupancy: data.maxOccupancy,
-      // --- FIM DA LÓGICA ---
       roomStatusCode: data.roomStatusCode,
       housekeepingStatusCode: data.housekeepingStatusCode,
     },
@@ -111,6 +114,40 @@ export async function deleteQuartoService(quartoId: string, userId: string) {
   return prisma.quarto.update({
     where: { id: quartoId },
     data: { deletedAt: new Date() },
+  });
+}
+
+// --- Funções para gerenciar comodidades específicas do quarto ---
+
+// Associa uma comodidade diretamente a um quarto
+export async function addAmenityToQuartoService(quartoId: string, amenityId: string, userId: string) {
+  const quarto = await checkQuartoPermissions(quartoId, userId);
+
+  const amenity = await prisma.amenity.findFirst({ where: { id: amenityId, deletedAt: null } });
+  if (!amenity) throw new Error('Comodidade não encontrada.');
+  if (amenity.pousadaId !== quarto.pousadaId) {
+    throw new Error('Comodidade não pertence à mesma pousada do quarto.');
+  }
+
+  return prisma.quartoAmenity.create({
+    data: {
+      quartoId,
+      amenityId,
+    },
+  });
+}
+
+// Remove a associação de uma comodidade de um quarto
+export async function removeAmenityFromQuartoService(quartoId: string, amenityId: string, userId: string) {
+  await checkQuartoPermissions(quartoId, userId);
+
+  return prisma.quartoAmenity.delete({
+    where: {
+      quartoId_amenityId: {
+        quartoId,
+        amenityId,
+      },
+    },
   });
 }
 
