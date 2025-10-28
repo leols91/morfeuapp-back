@@ -21,8 +21,39 @@ async function checkStockMovementPermissions(movementId: string, userId: string)
   return movement;
 }
 
+// --- NOVA FUNÇÃO ---
+// Lista TODAS as movimentações de uma pousada, com filtros
+export async function listAllStockMovementsService(
+  pousadaId: string,
+  userId: string,
+  // Aceitamos filtros pela query da URL
+  filters: { typeCode?: string; produtoId?: string },
+) {
+  const userHasAccess = await prisma.usuarioPousada.findUnique({
+    where: { usuarioId_pousadaId: { usuarioId: userId, pousadaId: pousadaId } },
+  });
+  if (!userHasAccess) throw new Error('Acesso negado.');
+
+  return prisma.stockMovement.findMany({
+    where: {
+      pousadaId,
+      deletedAt: null,
+      typeCode: filters.typeCode || undefined, // Filtra por tipo (in, out, adjust)
+      produtoId: filters.produtoId || undefined, // Filtra por produto
+    },
+    include: {
+      type: true,
+      produto: {
+        select: { name: true, sku: true }, // Inclui o nome do produto
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100, // Limita a 100 resultados por performance
+  });
+}
+
 // Lista todas as movimentações de um produto específico
-export async function listStockMovementsService(produtoId: string, userId: string) {
+export async function listStockMovementsByProductService(produtoId: string, userId: string) {
   const produto = await prisma.produto.findFirst({
     where: { id: produtoId, deletedAt: null },
   });
@@ -106,3 +137,4 @@ export async function deleteStockMovementService(movementId: string, userId: str
     data: { deletedAt: new Date() },
   });
 }
+
